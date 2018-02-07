@@ -12,7 +12,9 @@ game = {
     # game objects
     'BALL_SZ': 9,
     'PAD_H': 45,
-    'PAD_W': 15
+    'PAD_W': 15,
+
+    'TICKS': 300000
 }
 
 game['BALL_XSPD'] = game['WND_WIDTH'] / 160
@@ -26,6 +28,7 @@ game['AI_PAD_X'] = game['WND_WIDTH'] - game['PADDLE_W'] - 10
 game['PLY_PAD_X'] = 10
 
 DQN = {
-    'STATE_SIZE': 8,
-    'ACT_SIZE': 3
+    'STATE_SZ': 8,
+    'ACT_SZ': 3,
+    'BATCH_SZ': 1000,
 }

@@ -21,8 +21,11 @@ class Pong(object):
         for key, value in globals.DQN:
             self.dqn[key] = value
 
-        self.playerScore = 0
-        self.aiScore = 0
+        self.ply_score = 0
+        self.ply_hitcnt = 0
+
+        self.ai_score = 0
+        self.ai_hitcnt = 0
 
         self.ball['x'] = self.pong['BALL_XSTR']
         self.ball['y'] = self.pong['BALL_YSTR']
@@ -32,15 +35,18 @@ class Pong(object):
         self.ply_paddle = self.pong['PAD_START']
         self.ai_paddle = self.pong['PAD_START']
 
+        self.ply_score = 0
+        self.ai_score = 0
+
     def collision(self):
         angle = float(0)
         collision = False
 
         if ply_collision(ball=self.ball):
-            angle = angle(self.ply_paddle, self.ball['y'])
+            angle = angle(self.ply_paddle, self.ball)
             self.ball['y_spd'] = self.ball['x_spd'] * math.sin(angle) * 2
             collision = True
-            player_hit = 1
+            self.ply_hitcnt += 1
 
             """
             if TRAINING:
@@ -48,10 +54,10 @@ class Pong(object):
                 paddle_shift_rate += 0.08
             """
         if ai_collision(ball=self.ball):
-            angle = angle(self.ai_paddle, self.ball['y'])
+            angle = angle(self.ai_paddle, self.ball)
             self.ball['y_spd'] = self.ball['x_spd'] * math.sin(angle) * -2
             collision = True
-            computer_hit = 1
+            self.ai_hitcnt += 1
 
         if collision:
             self.ball['x_spd'] *= -1
@@ -62,25 +68,25 @@ class Pong(object):
             ball['y'] += self.pong['SCOREBAR_HEIGHT'] - ball['y'] - ball['y_spd']
             ball['y_spd'] *= -1
         elif ball['y'] + (self.pong['BALL_SZ'] - 1) + ball['y_spd'] >= pong['WND_HEIGHT']:
-            ball['y'] += (pong['WND_HEIGHT'] - (ball['y'] + self.pong['BALL_SZ'] - 1)) - ball['y_spd']
+            ball['y'] += (self.pong['WND_HEIGHT'] - (ball['y'] + self.pong['BALL_SZ'] - 1)) - ball['y_spd']
             ball['y_spd'] *= -1
         else:
             ball['y'] += ball['y_spd']
 
         if ball['x'] > self.pong['WND_WIDTH'] or ball['x'] < 0:
-            ball_x = 0.5 * self.pong['WND_WIDTH']
-            ball_y = (0.5 * (WND_HEIGHT - SCOREBAR_HEIGHT)) + SCOREBAR_HEIGHT
-            ball_yspeed = random.uniform(-3,3)
+            ball['x'] = 0.5 * self.pong['WND_WIDTH']
+            ball['y'] = (0.5 * (self.pong['WND_HEIGHT'] - self.pong['SCOREBAR_HEIGHT'])) + self.pong['SCOREBAR_HEIGHT']
+            ball['y_spd'] = random.uniform(-3, 3)
         else:
             return
 
         if ball['x'] < 0:
-            cpuScore += 1
+            self.ai_score += 1
 
         if (ball['x'] > self.pong['WND_WIDTH']):
-            playerScore += 1
+            self.ply_score += 1
 
-        ball(ball['x'],ball['y'])
+        ball(ball['x'], ball['y'])
 
     def quit(agent):
         # save the model
@@ -94,8 +100,8 @@ class Pong(object):
         pg.quit()
         sys.exit()
 
-    def angle(paddle_y, ball_y):
-        y = 5 * ((ball_y - (paddle_y + (PADDLE_H / 2))) / PADDLE_H * .5)
+    def angle(self, paddle, ball):
+        y = 5 * ((ball['y'] - (paddle + (self.pong['PAD_H'] / 2))) / self.pong['PAD_H'] * .5)
         return y
 
     def ply_collion(ball):
@@ -125,6 +131,9 @@ pg.init()
 
 # setting windows detail
 
+
+class Game():
+    pass
 
 
 
@@ -161,18 +170,12 @@ font = pg.font.SysFont("Courier New", 20, bold=True)
 
 agent = DQNAgent(state_size, action_size)
 
-# kinda large
-batch_size = 1000
 
 # total rewards throughout the lifetime of the game
 total_reward = 0
 
 # how many clocks until exit
 epoch = 0
-TOTAL_TICKS = 300000
-
-# flag for training mode
-TRAINING = False
 
 # deque for the mean of the rewards measured in the matches
 mean = deque(maxlen=10000)
