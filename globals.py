@@ -11,11 +11,13 @@ game = {
 
     # game objects
     'BALL_SZ': 9,
-    'PADDLE_H': 45,
-    'PADDLE_W': 15
+    'PAD_H': 45,
+    'PAD_W': 15
 }
 
 game['BALL_XSPD'] = game['WND_WIDTH'] / 160
+game['BALL_XSTR'] = 0.5 * game['WND_WIDTH']
+game['BALL_YSTR'] = 0.5 * (game['WND_HEIGHT'] - game['SCOREBAR_HEIGHT']) + SCOREBAR_HEIGHT
 
 game['PAD_SPEED'] = game['WINDOW_HEIGHT'] / 105
 game['PAD_START'] = (game['WND_WIDTH'] - game['SCOREBAR_HEIGHT']) / 2

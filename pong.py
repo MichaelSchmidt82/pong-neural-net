@@ -16,21 +16,21 @@ class Pong(object):
         pass
 
     def __init__(self):
-        for key, value in common.game:
+        for key, value in globals.game:
             self.pong[key] = value
-        for key, value in common.DQN:
+        for key, value in globals.DQN:
             self.dqn[key] = value
 
         self.playerScore = 0
         self.aiScore = 0
 
-        self.ball['x'] = 0
-        self.ball['y'] = 0
-        self.ball['x_spd'] = pong['BALL_XSPD']
+        self.ball['x'] = self.pong['BALL_XSTR']
+        self.ball['y'] = self.pong['BALL_YSTR']
+        self.ball['x_spd'] = self.pong['BALL_XSPD']
         self.ball['y_spd'] = random.uniform(-3, 3) * self.pong['WND_HEIGHT'] / 210
 
-        self.ply_paddle = pong['PAD_START']
-        self.ai_paddle = pong['PAD_START']
+        self.ply_paddle = self.pong['PAD_START']
+        self.ai_paddle = self.pong['PAD_START']
 
     def collision(self):
         angle = float(0)
@@ -38,7 +38,6 @@ class Pong(object):
 
         if ply_collision(ball=self.ball):
             angle = angle(self.ply_paddle, self.ball['y'])
-
             self.ball['y_spd'] = self.ball['x_spd'] * math.sin(angle) * 2
             collision = True
             player_hit = 1
@@ -50,7 +49,6 @@ class Pong(object):
             """
         if ai_collision(ball=self.ball):
             angle = angle(self.ai_paddle, self.ball['y'])
-
             self.ball['y_spd'] = self.ball['x_spd'] * math.sin(angle) * -2
             collision = True
             computer_hit = 1
@@ -58,6 +56,31 @@ class Pong(object):
         if collision:
             self.ball['x_spd'] *= -1
             self.ball['x'] += 1
+
+    def bounds(self, ball):
+        if ball['y'] + ball['y_spd'] <= self.pong['SCOREBAR_HEIGHT'] - 1:
+            ball['y'] += self.pong['SCOREBAR_HEIGHT'] - ball['y'] - ball['y_spd']
+            ball['y_spd'] *= -1
+        elif ball['y'] + (self.pong['BALL_SZ'] - 1) + ball['y_spd'] >= pong['WND_HEIGHT']:
+            ball['y'] += (pong['WND_HEIGHT'] - (ball['y'] + self.pong['BALL_SZ'] - 1)) - ball['y_spd']
+            ball['y_spd'] *= -1
+        else:
+            ball['y'] += ball['y_spd']
+
+        if ball['x'] > self.pong['WND_WIDTH'] or ball['x'] < 0:
+            ball_x = 0.5 * self.pong['WND_WIDTH']
+            ball_y = (0.5 * (WND_HEIGHT - SCOREBAR_HEIGHT)) + SCOREBAR_HEIGHT
+            ball_yspeed = random.uniform(-3,3)
+        else:
+            return
+
+        if ball['x'] < 0:
+            cpuScore += 1
+
+        if (ball['x'] > self.pong['WND_WIDTH']):
+            playerScore += 1
+
+        ball(ball['x'],ball['y'])
 
     def quit(agent):
         # save the model
@@ -109,29 +132,21 @@ pg.init()
 
 
 # set up display size
-windowDisplay = pg.display.set_mode((pong['WND_WIDTH', pong['WND_HEIGHT'), HWSURFACE | DOUBLEBUF | RESIZABLE)
 
 # title
 pg.display.set_caption("PongHackMT")
-
+windowDisplay = pg.display.set_mode(pong['WND_WIDTH'], pong['WND_HEIGHT'], HWSURFACE | DOUBLEBUF | RESIZABLE)
 clock = pg.time.Clock()
 
-ball_img = pg.image.load('ball.png')
-paddle1_img = pg.image.load('paddle.png')
-paddle2_img = pg.image.load('paddle.png')
-
-def paddle1(paddleP_x,paddleP_y):
-        windowDisplay.blit(paddle1_img, (paddleP_x, paddleP_y))
-
-def paddle2(paddleC_x,paddleC_y):
-        windowDisplay.blit(paddle2_img, (paddleC_x, paddleC_y))
-
-def ball(ball_x,ball_y):
-        windowDisplay.blit(ball_img, (ball_x,ball_y))
+# Update and Display Score
+if not True:
+    cpuScoreDisplay = font.render(str(cpuScore), 1, WHITE)
+    playerScoreDisplay = font.render(str(playerScore), 1, WHITE)
+    windowDisplay.blit(cpuScoreDisplay, (WND_WIDTH*3/4, SCOREBAR_HEIGHT/2 - 10))
+    windowDisplay.blit(playerScoreDisplay, (WND_WIDTH/4, SCOREBAR_HEIGHT/2 - 10))
+# END Update and Display Score
 
 
-paddleP_y = (0.5*(WND_HEIGHT-SCOREBAR_HEIGHT))+SCOREBAR_HEIGHT
-paddleC_y = paddleP_y
 paddleP_change = 0
 paddleC_change = 0
 
@@ -139,7 +154,7 @@ paddle_shift=0
 paddle_shift_rate=0.6
 
 
-myFont = pg.font.SysFont("Courier New", 20, bold=True)
+font = pg.font.SysFont("Courier New", 20, bold=True)
 
 
 # instantiate the Deep Q Neural Agent
@@ -161,8 +176,6 @@ TRAINING = False
 
 # deque for the mean of the rewards measured in the matches
 mean = deque(maxlen=10000)
-
-print('hackmt pong ai: Training Mode', TRAINING)
 
 # game loop
 while epoch < TOTAL_TICKS:
@@ -250,55 +263,6 @@ while epoch < TOTAL_TICKS:
     paddle2(paddleC_x,paddleC_y)
     #END Ball Movement
 
-    # Ball Out of Bounds
-    # If Player Loses
-    if (ball_x<0):
-
-        # reset the position of the player paddle
-        ball_x = 0.5 * WND_WIDTH
-        ball_y = (0.5 * (WND_HEIGHT-SCOREBAR_HEIGHT))+SCOREBAR_HEIGHT
-        ball_yspeed = random.uniform(-3,3)
-        cpuScore += 1   # increase the scoreboard
-
-    # If CPU Loses
-    if (ball_x>WND_WIDTH):
-
-        # reset the position of the cpu paddle
-        ball_x = 0.5 * WND_WIDTH
-        ball_y = (0.5 * (WND_HEIGHT-SCOREBAR_HEIGHT))+SCOREBAR_HEIGHT
-        ball_yspeed = random.uniform(-3,3)
-        playerScore += 1    # increase the scoreboard
-
-    # exit the match
-    #if not TRAINING and playerScore == 20:
-    #    pg.quit()
-    #    sys.exit()
-    # END Ball Out of Bounds
-
-
-
-    # Ball Vertical Limit
-    if ball_y  + ball_yspeed <= SCOREBAR_HEIGHT - 1:
-        ball_y += (SCOREBAR_HEIGHT-ball_y)-ball_yspeed
-        ball_yspeed = -1* ball_yspeed
-    elif ball_y + (BALL_SIZE-1) +ball_yspeed >= WND_HEIGHT:
-        ball_y += (WND_HEIGHT-(ball_y+BALL_SIZE-1))-ball_yspeed
-        ball_yspeed = -1* ball_yspeed
-    else:
-        ball_y += ball_yspeed
-    #END Ball Vertical Limit
-
-    # set the coordinated of the ball
-    ball(ball_x,ball_y)
-
-    # Update and Display Score
-    if not game[]:
-        cpuScoreDisplay = myFont.render(str(cpuScore), 1, WHITE)
-        playerScoreDisplay = myFont.render(str(playerScore), 1, WHITE)
-        windowDisplay.blit(cpuScoreDisplay, (WND_WIDTH*3/4, SCOREBAR_HEIGHT/2 - 10))
-        windowDisplay.blit(playerScoreDisplay, (WND_WIDTH/4, SCOREBAR_HEIGHT/2 - 10))
-    # END Update and Display Score
-
     if not TRAINING:
         clock.tick(30)
 
@@ -316,5 +280,3 @@ while epoch < TOTAL_TICKS:
     # append the current reward value to the mean deque
     mean.append(curr_reward)
     epoch+=1     # reduce the game ticker down one
-
-quit(agent)
