@@ -1,30 +1,124 @@
 import gym
+import sys
+import time
+import math
+import random
+import datetime
 import numpy as np
 import pygame as pg
-import datetime, time
-import sys, random, math
-from . import common
 from pygame.locals import *
+from . import globals
+
 
 class Pong(object):
+
+    def run(self):
+        pass
+
     def __init__(self):
-        for key, value in common.GAME:
-            self.game[key] = value
-        for key, value in common.DQN:
+        for key, value in globals.game:
+            self.pong[key] = value
+        for key, value in globals.DQN:
             self.dqn[key] = value
 
         self.playerScore = 0
         self.aiScore = 0
 
-    def run(self):
-        pass
+        self.ball['x'] = self.pong['BALL_XSTR']
+        self.ball['y'] = self.pong['BALL_YSTR']
+        self.ball['x_spd'] = self.pong['BALL_XSPD']
+        self.ball['y_spd'] = random.uniform(-3, 3) * self.pong['WND_HEIGHT'] / 210
 
-    def angleCalc(paddle_y, ball_y):
-        y =  5 * ((ball_y - (paddle_y + (PADDLE_H / 2 ))) / PADDLE_H*.5 )
+        self.ply_paddle = self.pong['PAD_START']
+        self.ai_paddle = self.pong['PAD_START']
+
+    def collision(self):
+        angle = float(0)
+        collision = False
+
+        if ply_collision(ball=self.ball):
+            angle = angle(self.ply_paddle, self.ball['y'])
+            self.ball['y_spd'] = self.ball['x_spd'] * math.sin(angle) * 2
+            collision = True
+            player_hit = 1
+
+            """
+            if TRAINING:
+                paddle_shift += 3
+                paddle_shift_rate += 0.08
+            """
+        if ai_collision(ball=self.ball):
+            angle = angle(self.ai_paddle, self.ball['y'])
+            self.ball['y_spd'] = self.ball['x_spd'] * math.sin(angle) * -2
+            collision = True
+            computer_hit = 1
+
+        if collision:
+            self.ball['x_spd'] *= -1
+            self.ball['x'] += 1
+
+    def bounds(self, ball):
+        if ball['y'] + ball['y_spd'] <= self.pong['SCOREBAR_HEIGHT'] - 1:
+            ball['y'] += self.pong['SCOREBAR_HEIGHT'] - ball['y'] - ball['y_spd']
+            ball['y_spd'] *= -1
+        elif ball['y'] + (self.pong['BALL_SZ'] - 1) + ball['y_spd'] >= pong['WND_HEIGHT']:
+            ball['y'] += (pong['WND_HEIGHT'] - (ball['y'] + self.pong['BALL_SZ'] - 1)) - ball['y_spd']
+            ball['y_spd'] *= -1
+        else:
+            ball['y'] += ball['y_spd']
+
+        if ball['x'] > self.pong['WND_WIDTH'] or ball['x'] < 0:
+            ball_x = 0.5 * self.pong['WND_WIDTH']
+            ball_y = (0.5 * (WND_HEIGHT - SCOREBAR_HEIGHT)) + SCOREBAR_HEIGHT
+            ball_yspeed = random.uniform(-3,3)
+        else:
+            return
+
+        if ball['x'] < 0:
+            cpuScore += 1
+
+        if (ball['x'] > self.pong['WND_WIDTH']):
+            playerScore += 1
+
+        ball(ball['x'],ball['y'])
+
+    def quit(agent):
+        # save the model
+        filename = 'weights/pong_weights-' + \
+            str(datetime.datetime.now().strftime("%y-%m-%d-%H-%M")) \
+            + '.h5'
+
+        agent.save(filename)
+        print('Saved pong weights as', filename)
+        print('Exiting...')
+        pg.quit()
+        sys.exit()
+
+    def angle(paddle_y, ball_y):
+        y = 5 * ((ball_y - (paddle_y + (PADDLE_H / 2))) / PADDLE_H * .5)
         return y
 
+    def ply_collion(ball):
+        if ball['x'] + ball['x_spd'] > self.pong['PAD_W'] + self.pong['PLY_PAD_X'] - 1:
+            return False
+        if ball['y'] + ball['y_spd'] > self.pong['PAD_H'] + self.ply_paddle - 1:
+            return False
+        if ball['x'] + ball['x_spd'] + self.pong['BALL_SZ'] - 1 < self.pong['PLY_PAD_X']:
+            return False
+        if ball['y'] + ball['y_spd'] + self.pong['BALL_SZ'] - 1 < self.ply_paddle:
+            return False
+        return True
 
-
+    def ai_collision(ball):
+        if ball['x'] + ball['x_spd'] > self.pong['PAD_W'] + self.pong['AI_PAD_X'] - 1:
+            return False
+        if ball['y'] + ball['y_spd'] < self.pong['PAD_H'] + self.ai_paddle - 1:
+            return False
+        if ball['x'] + ball['x_spd'] + self.pong['BALL_SZ'] - 1 < self.pong['AI_PAD_X']:
+            return False
+        if ball['y'] + ball['y_spd'] + self.pong['BALL_SZ'] - 1 < self.ai_paddle:
+            return False
+        return True
 
 # initialise the pygame module
 pg.init()
@@ -38,55 +132,29 @@ pg.init()
 
 
 # set up display size
-windowDisplay = pg.display.set_mode((game['WINDOW_WIDTH', game['WINDOW_HEIGHT'), HWSURFACE | DOUBLEBUF | RESIZABLE)
 
 # title
 pg.display.set_caption("PongHackMT")
-
+windowDisplay = pg.display.set_mode(pong['WND_WIDTH'], pong['WND_HEIGHT'], HWSURFACE | DOUBLEBUF | RESIZABLE)
 clock = pg.time.Clock()
 
-ball_img = pg.image.load('ball.png')
-paddle1_img = pg.image.load('paddle.png')
-paddle2_img = pg.image.load('paddle.png')
-
-def paddle1(paddleP_x,paddleP_y):
-        windowDisplay.blit(paddle1_img, (paddleP_x, paddleP_y))
-
-def paddle2(paddleC_x,paddleC_y):
-        windowDisplay.blit(paddle2_img, (paddleC_x, paddleC_y))
-
-def ball(ball_x,ball_y):
-        windowDisplay.blit(ball_img, (ball_x,ball_y))
+# Update and Display Score
+if not True:
+    cpuScoreDisplay = font.render(str(cpuScore), 1, WHITE)
+    playerScoreDisplay = font.render(str(playerScore), 1, WHITE)
+    windowDisplay.blit(cpuScoreDisplay, (WND_WIDTH*3/4, SCOREBAR_HEIGHT/2 - 10))
+    windowDisplay.blit(playerScoreDisplay, (WND_WIDTH/4, SCOREBAR_HEIGHT/2 - 10))
+# END Update and Display Score
 
 
-
-## hard exits the game
-def quit(agent):
-    # save the model
-    fn = 'weights/pong_weights-' + str(datetime.datetime.now().strftime("%y-%m-%d-%H-%M")) \
-         + '.h5'
-    agent.save(fn)
-    print('Saved pong weights as',fn)
-    print('Exiting..')
-    pg.quit()
-    sys.exit()
-
-paddleC_x = game['WINDOW_WIDTH'] - game['PADDLE_W' - 10
-paddleP_x = 10
-paddleP_y = (0.5*(WINDOW_HEIGHT-SCORE_BAR_HEIGHT))+SCORE_BAR_HEIGHT
-paddleC_y = paddleP_y
 paddleP_change = 0
 paddleC_change = 0
-ball_x = 0.5 * WINDOW_WIDTH
-ball_y = (0.5 * (WINDOW_HEIGHT-SCORE_BAR_HEIGHT))+SCORE_BAR_HEIGHT
-ball_xspeed = WINDOW_WIDTH/160
-ball_yspeed = random.uniform(-3,3)*WINDOW_HEIGHT/210
 
 paddle_shift=0
 paddle_shift_rate=0.6
 
 
-myFont = pg.font.SysFont("Courier New", 20, bold=True)
+font = pg.font.SysFont("Courier New", 20, bold=True)
 
 
 # instantiate the Deep Q Neural Agent
@@ -109,8 +177,6 @@ TRAINING = False
 # deque for the mean of the rewards measured in the matches
 mean = deque(maxlen=10000)
 
-print('hackmt pong ai: Training Mode', TRAINING)
-
 # game loop
 while epoch < TOTAL_TICKS:
 
@@ -121,7 +187,7 @@ while epoch < TOTAL_TICKS:
        print ('epoch:', epoch, 'mean: ', np.mean(mean),'e:', agent.epsilon)
 
     if not TRAINING:
-        scoresLine = pg.draw.rect(windowDisplay, WHITE, (0, SCORE_BAR_HEIGHT-1, WINDOW_WIDTH, 2), 0)
+        scoresLine = pg.draw.rect(windowDisplay, WHITE, (0, SCOREBAR_HEIGHT-1, WND_WIDTH, 2), 0)
 
     while ball_yspeed == 0:
             ball_yspeed = random.uniform(-3,3)
@@ -177,9 +243,9 @@ while epoch < TOTAL_TICKS:
 
 
     # bounding box for the paddles
-    if paddleP_y + (paddleP_change+PADDLE_H) >= game['WINDOW_HEIGHT'] +paddle_speed or paddleP_y + (paddleP_change) <= SCORE_BAR_HEIGHT:
+    if paddleP_y + (paddleP_change+PADDLE_H) >= pong['WND_HEIGHT'] +paddle_speed or paddleP_y + (paddleP_change) <= SCOREBAR_HEIGHT:
         paddleP_change = 0
-    if paddleC_y + (paddleC_change+PADDLE_H) >= WINDOW_HEIGHT+paddle_speed or paddleC_y + (paddleC_change) <= SCORE_BAR_HEIGHT:
+    if paddleC_y + (paddleC_change+PADDLE_H) >= WND_HEIGHT+paddle_speed or paddleC_y + (paddleC_change) <= SCOREBAR_HEIGHT:
         paddleC_change = 0
     #END Paddle Movement
 
@@ -196,84 +262,6 @@ while epoch < TOTAL_TICKS:
     paddle1(paddleP_x,paddleP_y)
     paddle2(paddleC_x,paddleC_y)
     #END Ball Movement
-
-
-    # Ball/Paddle Collision
-    #Player Paddle
-    if ball_x + ball_xspeed <= paddleP_x + PADDLE_W - 1 and ball_x + BALL_SIZE - 1 + ball_xspeed >= paddleP_x:
-        if ball_y + ball_yspeed <= paddleP_y + PADDLE_H - 1 and ball_y + BALL_SIZE - 1 + ball_yspeed >= paddleP_y:
-            ball_x +=1
-            ball_xspeed *= -1
-            angle = angleCalc(paddleP_y, ball_y)
-            ball_yspeed = ball_xspeed * math.sin(angle)*2
-            player_hit = 1
-
-            if TRAINING:
-                paddle_shift += 3
-                paddle_shift_rate += 0.08
-
-    # CPU paddle
-    if BALL_X + ball_xspeed <= paddleC_x + PADDLE_W - 1 and ball_x + BALL_SIZE - 1 + ball_xspeed >= paddleC_x:
-        if ball_y + ball_yspeed <= paddleC_y + PADDLE_H - 1 and ball_y + BALL_SIZE - 1 + ball_yspeed >= paddleC_y:
-            ball_x -= 1
-            ball_xspeed *= -1
-            angle = angleCalc(paddleC_y, ball_y)
-            ball_yspeed = ball_xspeed * math.sin(angle) *-2
-            computer_hit = 1
-
-            # advance the current reward to 1
-            #curr_reward = 1
-    # END Ball/Paddle Collision
-
-
-    # Ball Out of Bounds
-    # If Player Loses
-    if (ball_x<0):
-
-        # reset the position of the player paddle
-        ball_x = 0.5 * WINDOW_WIDTH
-        ball_y = (0.5 * (WINDOW_HEIGHT-SCORE_BAR_HEIGHT))+SCORE_BAR_HEIGHT
-        ball_yspeed = random.uniform(-3,3)
-        cpuScore += 1   # increase the scoreboard
-
-    # If CPU Loses
-    if (ball_x>WINDOW_WIDTH):
-
-        # reset the position of the cpu paddle
-        ball_x = 0.5 * WINDOW_WIDTH
-        ball_y = (0.5 * (WINDOW_HEIGHT-SCORE_BAR_HEIGHT))+SCORE_BAR_HEIGHT
-        ball_yspeed = random.uniform(-3,3)
-        playerScore += 1    # increase the scoreboard
-
-    # exit the match
-    #if not TRAINING and playerScore == 20:
-    #    pg.quit()
-    #    sys.exit()
-    # END Ball Out of Bounds
-
-
-
-    # Ball Vertical Limit
-    if ball_y  + ball_yspeed <= SCORE_BAR_HEIGHT - 1:
-        ball_y += (SCORE_BAR_HEIGHT-ball_y)-ball_yspeed
-        ball_yspeed = -1* ball_yspeed
-    elif ball_y + (BALL_SIZE-1) +ball_yspeed >= WINDOW_HEIGHT:
-        ball_y += (WINDOW_HEIGHT-(ball_y+BALL_SIZE-1))-ball_yspeed
-        ball_yspeed = -1* ball_yspeed
-    else:
-        ball_y += ball_yspeed
-    #END Ball Vertical Limit
-
-    # set the coordinated of the ball
-    ball(ball_x,ball_y)
-
-    # Update and Display Score
-    if not game[]:
-        cpuScoreDisplay = myFont.render(str(cpuScore), 1, WHITE)
-        playerScoreDisplay = myFont.render(str(playerScore), 1, WHITE)
-        windowDisplay.blit(cpuScoreDisplay, (WINDOW_WIDTH*3/4, SCORE_BAR_HEIGHT/2 - 10))
-        windowDisplay.blit(playerScoreDisplay, (WINDOW_WIDTH/4, SCORE_BAR_HEIGHT/2 - 10))
-    # END Update and Display Score
 
     if not TRAINING:
         clock.tick(30)
@@ -292,5 +280,3 @@ while epoch < TOTAL_TICKS:
     # append the current reward value to the mean deque
     mean.append(curr_reward)
     epoch+=1     # reduce the game ticker down one
-
-quit(agent)
