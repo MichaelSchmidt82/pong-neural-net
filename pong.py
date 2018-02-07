@@ -8,18 +8,14 @@ import numpy as np
 import pygame as pg
 from pygame.locals import *
 from . import globals
+from collections import deque
 
 
 class Pong(object):
 
-    def run(self):
-        pass
-
     def __init__(self):
         for key, value in globals.game:
-            self.pong[key] = value
-        for key, value in globals.DQN:
-            self.dqn[key] = value
+            self.config[key] = value
 
         self.ply_score = 0
         self.ply_hitcnt = 0
@@ -27,16 +23,21 @@ class Pong(object):
         self.ai_score = 0
         self.ai_hitcnt = 0
 
-        self.ball['x'] = self.pong['BALL_XSTR']
-        self.ball['y'] = self.pong['BALL_YSTR']
-        self.ball['x_spd'] = self.pong['BALL_XSPD']
-        self.ball['y_spd'] = random.uniform(-3, 3) * self.pong['WND_HEIGHT'] / 210
+        self.ball['x'] = self.config['BALL_XSTR']
+        self.ball['y'] = self.config['BALL_YSTR']
+        self.ball['x_spd'] = self.config['BALL_XSPD']
+        self.ball['y_spd'] = random.uniform(-3, 3) * self.config['WND_HEIGHT'] / 210
 
-        self.ply_paddle = self.pong['PAD_START']
-        self.ai_paddle = self.pong['PAD_START']
+        self.ply_paddle = self.config['PAD_START']
+        self.ai_paddle = self.config['PAD_START']
 
         self.ply_score = 0
         self.ai_score = 0
+
+    def run(self):
+        while not self.ball['y_spd']:
+            self.ball['y_spd'] = random.uniform(-3, 3)
+        pass
 
     def collision(self):
         angle = float(0)
@@ -64,18 +65,18 @@ class Pong(object):
             self.ball['x'] += 1
 
     def bounds(self, ball):
-        if ball['y'] + ball['y_spd'] <= self.pong['SCOREBAR_HEIGHT'] - 1:
-            ball['y'] += self.pong['SCOREBAR_HEIGHT'] - ball['y'] - ball['y_spd']
+        if ball['y'] + ball['y_spd'] <= self.config['SCOREBAR_H'] - 1:
+            ball['y'] += self.config['SCOREBAR_H'] - ball['y'] - ball['y_spd']
             ball['y_spd'] *= -1
-        elif ball['y'] + (self.pong['BALL_SZ'] - 1) + ball['y_spd'] >= pong['WND_HEIGHT']:
-            ball['y'] += (self.pong['WND_HEIGHT'] - (ball['y'] + self.pong['BALL_SZ'] - 1)) - ball['y_spd']
+        elif ball['y'] + (self.config['BALL_SZ'] - 1) + ball['y_spd'] >= config['WND_HEIGHT']:
+            ball['y'] += (self.config['WND_HEIGHT'] - (ball['y'] + self.config['BALL_SZ'] - 1)) - ball['y_spd']
             ball['y_spd'] *= -1
         else:
             ball['y'] += ball['y_spd']
 
-        if ball['x'] > self.pong['WND_WIDTH'] or ball['x'] < 0:
-            ball['x'] = 0.5 * self.pong['WND_WIDTH']
-            ball['y'] = (0.5 * (self.pong['WND_HEIGHT'] - self.pong['SCOREBAR_HEIGHT'])) + self.pong['SCOREBAR_HEIGHT']
+        if ball['x'] > self.config['WND_WIDTH'] or ball['x'] < 0:
+            ball['x'] = 0.5 * self.config['WND_WIDTH']
+            ball['y'] = (0.5 * (self.config['WND_HEIGHT'] - self.config['SCOREBAR_H'])) + self.config['SCOREBAR_H']
             ball['y_spd'] = random.uniform(-3, 3)
         else:
             return
@@ -83,10 +84,12 @@ class Pong(object):
         if ball['x'] < 0:
             self.ai_score += 1
 
-        if (ball['x'] > self.pong['WND_WIDTH']):
+        if (ball['x'] > self.config['WND_WIDTH']):
             self.ply_score += 1
 
         ball(ball['x'], ball['y'])
+
+    # Update and Display Score
 
     def quit(agent):
         # save the model
@@ -101,60 +104,68 @@ class Pong(object):
         sys.exit()
 
     def angle(self, paddle, ball):
-        y = 5 * ((ball['y'] - (paddle + (self.pong['PAD_H'] / 2))) / self.pong['PAD_H'] * .5)
+        y = 5 * ((ball['y'] - (paddle + (self.config['PAD_H'] / 2))) / self.config['PAD_H'] * .5)
         return y
 
     def ply_collion(ball):
-        if ball['x'] + ball['x_spd'] > self.pong['PAD_W'] + self.pong['PLY_PAD_X'] - 1:
+        if ball['x'] + ball['x_spd'] > self.config['PAD_W'] + self.config['PLY_PAD_X'] - 1:
             return False
-        if ball['y'] + ball['y_spd'] > self.pong['PAD_H'] + self.ply_paddle - 1:
+        if ball['y'] + ball['y_spd'] > self.config['PAD_H'] + self.ply_paddle - 1:
             return False
-        if ball['x'] + ball['x_spd'] + self.pong['BALL_SZ'] - 1 < self.pong['PLY_PAD_X']:
+        if ball['x'] + ball['x_spd'] + self.config['BALL_SZ'] - 1 < self.config['PLY_PAD_X']:
             return False
-        if ball['y'] + ball['y_spd'] + self.pong['BALL_SZ'] - 1 < self.ply_paddle:
+        if ball['y'] + ball['y_spd'] + self.config['BALL_SZ'] - 1 < self.ply_paddle:
             return False
         return True
 
     def ai_collision(ball):
-        if ball['x'] + ball['x_spd'] > self.pong['PAD_W'] + self.pong['AI_PAD_X'] - 1:
+        if ball['x'] + ball['x_spd'] > self.config['PAD_W'] + self.config['AI_PAD_X'] - 1:
             return False
-        if ball['y'] + ball['y_spd'] < self.pong['PAD_H'] + self.ai_paddle - 1:
+        if ball['y'] + ball['y_spd'] < self.config['PAD_H'] + self.ai_paddle - 1:
             return False
-        if ball['x'] + ball['x_spd'] + self.pong['BALL_SZ'] - 1 < self.pong['AI_PAD_X']:
+        if ball['x'] + ball['x_spd'] + self.config['BALL_SZ'] - 1 < self.config['AI_PAD_X']:
             return False
-        if ball['y'] + ball['y_spd'] + self.pong['BALL_SZ'] - 1 < self.ai_paddle:
+        if ball['y'] + ball['y_spd'] + self.config['BALL_SZ'] - 1 < self.ai_paddle:
             return False
         return True
 
-# initialise the pygame module
-pg.init()
 
-# setting windows detail
+class Game(pong):
+    def __init__(self):
 
+        for key, value in globals.game:
+            self.config[key] = value
+        for key, value in globals.DQN:
+            self.dqn[key] = value
 
-class Game():
-    pass
+        self.pong = Pong()
+        self.agent = DQNAgent(self.dqn['STATE_SZ'], self.dqn['ACT_SZ'])
+        self.epoch = 0
+        self.mem = deque(maxlen=10000)
 
+        pg.init()
+        pg.display.set_caption("Pong")
+        self.wnd_display = pg.display.set_mode(self.config['WND_WIDTH'], self.config['WND_HEIGHT'], HWSURFACE | DOUBLEBUF | RESIZABLE)
+        self.font = pg.font.SysFont("Courier New", 20, bold=True)
 
+        if not self.config['TRAINNG']:
+            self.clock = pg.time.Clock()
 
+        self.ai_scr_disp = self.font.render(str(self.pong.ai_score), 1, self.config['WHITE'])
+        self.ply_scr_disp = self.font.render(str(self.pong.ply_score), 1, self.config['WHITE'])
+        self.wnd_display.blit(self.ai_scr_disp, (self.congig['WND_WIDTH'] * 3 / 4, self.config['SCOREBAR_H'] / 2 - 10))
+        self.wnd_display.blit(self.ply_scr_disp, (self.config['WND_WIDTH'] / 4, self.config['SCOREBAR_H'] / 2 - 10))
 
+    def Run(self):
 
+        while self.epoch < self.config['TICKS']:
+            if epoch != 0 and epoch % 1000 == 0:
+               print ('epoch:', epoch, 'mean: ', np.mean(mem),'e:', self.agent.epsilon)
 
-# set up display size
+            # if not self.config['TRAINNG']:
+            # scoresLine = pg.draw.rect(windowDisplay, WHITE, (0, SCOREBAR_H-1, WND_WIDTH, 2), 0)
 
-# title
-pg.display.set_caption("PongHackMT")
-windowDisplay = pg.display.set_mode(pong['WND_WIDTH'], pong['WND_HEIGHT'], HWSURFACE | DOUBLEBUF | RESIZABLE)
-clock = pg.time.Clock()
-
-# Update and Display Score
-if not True:
-    cpuScoreDisplay = font.render(str(cpuScore), 1, WHITE)
-    playerScoreDisplay = font.render(str(playerScore), 1, WHITE)
-    windowDisplay.blit(cpuScoreDisplay, (WND_WIDTH*3/4, SCOREBAR_HEIGHT/2 - 10))
-    windowDisplay.blit(playerScoreDisplay, (WND_WIDTH/4, SCOREBAR_HEIGHT/2 - 10))
-# END Update and Display Score
-
+            pass
 
 paddleP_change = 0
 paddleC_change = 0
@@ -163,19 +174,12 @@ paddle_shift=0
 paddle_shift_rate=0.6
 
 
-font = pg.font.SysFont("Courier New", 20, bold=True)
-
-
-# instantiate the Deep Q Neural Agent
-
-agent = DQNAgent(state_size, action_size)
-
 
 # total rewards throughout the lifetime of the game
 total_reward = 0
 
 # how many clocks until exit
-epoch = 0
+
 
 # deque for the mean of the rewards measured in the matches
 mean = deque(maxlen=10000)
@@ -190,10 +194,9 @@ while epoch < TOTAL_TICKS:
        print ('epoch:', epoch, 'mean: ', np.mean(mean),'e:', agent.epsilon)
 
     if not TRAINING:
-        scoresLine = pg.draw.rect(windowDisplay, WHITE, (0, SCOREBAR_HEIGHT-1, WND_WIDTH, 2), 0)
+        scoresLine = pg.draw.rect(windowDisplay, WHITE, (0, SCOREBAR_H-1, WND_WIDTH, 2), 0)
 
-    while ball_yspeed == 0:
-            ball_yspeed = random.uniform(-3,3)
+
 
 
     state = np.array([paddleP_y,paddleP_change, paddleC_y, paddleC_change,
@@ -246,9 +249,9 @@ while epoch < TOTAL_TICKS:
 
 
     # bounding box for the paddles
-    if paddleP_y + (paddleP_change+PADDLE_H) >= pong['WND_HEIGHT'] +paddle_speed or paddleP_y + (paddleP_change) <= SCOREBAR_HEIGHT:
+    if paddleP_y + (paddleP_change+PADDLE_H) >= pong['WND_HEIGHT'] +paddle_speed or paddleP_y + (paddleP_change) <= SCOREBAR_H:
         paddleP_change = 0
-    if paddleC_y + (paddleC_change+PADDLE_H) >= WND_HEIGHT+paddle_speed or paddleC_y + (paddleC_change) <= SCOREBAR_HEIGHT:
+    if paddleC_y + (paddleC_change+PADDLE_H) >= WND_HEIGHT+paddle_speed or paddleC_y + (paddleC_change) <= SCOREBAR_H:
         paddleC_change = 0
     #END Paddle Movement
 
