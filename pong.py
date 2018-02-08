@@ -37,7 +37,9 @@ class Pong(object):
     def run(self):
         while not self.ball['y_spd']:
             self.ball['y_spd'] = random.uniform(-3, 3)
-        pass
+
+        if not self.config['TRAINING']:
+            clock.tick(30)
 
     def collision(self):
         angle = float(0)
@@ -88,6 +90,11 @@ class Pong(object):
             self.ply_score += 1
 
         ball(ball['x'], ball['y'])
+
+        if paddleP_y + (paddleP_change+PADDLE_H) >= pong['WND_HEIGHT'] +paddle_speed or paddleP_y + (paddleP_change) <= SCOREBAR_H:
+            paddleP_change = 0
+        if paddleC_y + (paddleC_change+PADDLE_H) >= WND_HEIGHT+paddle_speed or paddleC_y + (paddleC_change) <= SCOREBAR_H:
+            paddleC_change = 0
 
     # Update and Display Score
 
@@ -140,7 +147,7 @@ class Game(pong):
 
         self.pong = Pong()
         self.agent = DQNAgent(self.dqn['STATE_SZ'], self.dqn['ACT_SZ'])
-        self.epoch = 0
+        self.epoch = 1  # prevint division by zero
         self.mem = deque(maxlen=10000)
 
         pg.init()
@@ -150,6 +157,7 @@ class Game(pong):
 
         if not self.config['TRAINNG']:
             self.clock = pg.time.Clock()
+            self.scr_ln = pg.draw.rect(self.wnd_disp, self.config['WHITE'], (0, config['SCOREBAR_H'] - 1, self.config['WND_WIDTH'], 2), 0)
 
         self.ai_scr_disp = self.font.render(str(self.pong.ai_score), 1, self.config['WHITE'])
         self.ply_scr_disp = self.font.render(str(self.pong.ply_score), 1, self.config['WHITE'])
@@ -157,84 +165,67 @@ class Game(pong):
         self.wnd_display.blit(self.ply_scr_disp, (self.config['WND_WIDTH'] / 4, self.config['SCOREBAR_H'] / 2 - 10))
 
     def Run(self):
+        pong = self.pong
+        config = self.config
 
         while self.epoch < self.config['TICKS']:
-            if epoch != 0 and epoch % 1000 == 0:
-               print ('epoch:', epoch, 'mean: ', np.mean(mem),'e:', self.agent.epsilon)
+            if self.epoch % 1000 == 0:
+                print('epoch:', self.epoch, 'mean:', np.mean(self.mem), 'e:', self.agent.epsilon)
 
-            # if not self.config['TRAINNG']:
-            # scoresLine = pg.draw.rect(windowDisplay, WHITE, (0, SCOREBAR_H-1, WND_WIDTH, 2), 0)
+            state = np.array([paddleP_y,paddleP_change, paddleC_y, paddleC_change, ball_x, ball_y, ball_xspeed, ball_yspeed])
+            state = np.reshape(state, [1, config['STATE_SZ']])
+            action = agent.act(state)
 
-            pass
+            if action == 0:
+                paddleC_change = -paddle_speed
+            if action == 2:
+                paddleC_change = paddle_speed
 
-paddleP_change = 0
-paddleC_change = 0
+            for e in pg.event.get():
+                Controller(e)
 
-paddle_shift=0
-paddle_shift_rate=0.6
+            if not self.config['TRAINING']:
+                pg.display.update()
+                self.wnd_disp.fill(config['BLACK'])
 
+            next_state = np.array([pong.ply_paddle, paddleP_change, pong.ai_paddle, paddleC_change, pong.ball['x'], pong.ball['y'], pong.ball['x_spd'], pong.ball['y_spd'])
+            next_state = np.reshape(state, [1, state_size])
+            self.agent.remember(state, action, curr_reward, next_state, done)
 
+            if len(agent.memory) > config['BATCH_SZ']:
+                agent.replay(config['BATCH_SZ'])
 
-# total rewards throughout the lifetime of the game
-total_reward = 0
+            if not config['TRAINING']:
+                pg.display.update()
+                self.wnd_disp.fill(pong['BLACK'])
 
-# how many clocks until exit
+        self.epoch += 1
 
-
-# deque for the mean of the rewards measured in the matches
-mean = deque(maxlen=10000)
-
-# game loop
-while epoch < TOTAL_TICKS:
-
-    # current reward for the match
-    curr_reward = 0
-
-    if epoch != 0 and epoch % 1000 == 0:
-       print ('epoch:', epoch, 'mean: ', np.mean(mean),'e:', agent.epsilon)
-
-    if not TRAINING:
-        scoresLine = pg.draw.rect(windowDisplay, WHITE, (0, SCOREBAR_H-1, WND_WIDTH, 2), 0)
-
-
-
-
-    state = np.array([paddleP_y,paddleP_change, paddleC_y, paddleC_change,
-                        ball_x, ball_y, ball_xspeed, ball_yspeed])
-    state = np.reshape(state, [1, state_size])
-    action = agent.act(state)
-
-    if action == 0:
-        paddleC_change = - (paddle_speed)
-    # down
-    if action == 2:
-        paddleC_change = (paddle_speed)
-
-    done = ball_x<0
-    if done:
-        print('computer scored')
-
-
-    #Paddle Movement
-    for event in pg.event.get():
+    def Controller(self, event):
         if event.type == QUIT:
-            quit(agent)
+            quit(self.agent)
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_ESCAPE:
-                quit(agent)
-            if event.key == pg.K_UP:
-                paddleP_change = - (paddle_speed)
-            if event.key == pg.K_DOWN:
-                paddleP_change = (paddle_speed)
-            if event.key == pg.K_w:
-                paddleC_change = - (paddle_speed)
-            if event.key == pg.K_s:
-                paddleC_change = (paddle_speed)
+                quit(self.agent)
+            elif event.key == pg.K_UP:
+                paddleP_change = -self.config['PAD_SPEED']
+            elif event.key == pg.K_DOWN:
+                paddleP_change = self.config['PAD_SPEED']
+            elif event.key == pg.K_w:
+                paddleC_change = -self.config['PAD_SPEED']
+            elif event.key == pg.K_s:
+                paddleC_change = self.config['PAD_SPEED']
         elif event.type == pg.KEYUP:
             if event.key == pg.K_UP or event.key == pg.K_DOWN:
                 paddleP_change = 0
-            if event.key == pg.K_w or event.key == pg.K_s:
+            elif event.key == pg.K_w or event.key == pg.K_s:
                 paddleC_change = 0
+
+    def quit(self, agent):
+        self.pong.quit(self.agent)
+
+paddle_shift=0
+paddle_shift_rate=0.6
 
     #randomize left side level
     if paddle_shift_rate >= 1:
@@ -247,42 +238,10 @@ while epoch < TOTAL_TICKS:
     else:
         paddleP_change = paddle_shift_rate * (paddle_speed)
 
-
-    # bounding box for the paddles
-    if paddleP_y + (paddleP_change+PADDLE_H) >= pong['WND_HEIGHT'] +paddle_speed or paddleP_y + (paddleP_change) <= SCOREBAR_H:
-        paddleP_change = 0
-    if paddleC_y + (paddleC_change+PADDLE_H) >= WND_HEIGHT+paddle_speed or paddleC_y + (paddleC_change) <= SCOREBAR_H:
-        paddleC_change = 0
-    #END Paddle Movement
-
-
     #Ball Movement
     paddleP_y += paddleP_change
     paddleC_y += paddleC_change
     ball_x += ball_xspeed
 
-    if not TRAINING:
-        pg.display.update()
-        windowDisplay.fill(BLACK)
-
     paddle1(paddleP_x,paddleP_y)
     paddle2(paddleC_x,paddleC_y)
-    #END Ball Movement
-
-    if not TRAINING:
-        clock.tick(30)
-
-    if (np.abs(ball_y - paddleC_y) > 25):
-        curr_reward = -1
-
-    next_state = np.array([paddleP_y,paddleP_change, paddleC_y, paddleC_change,
-                        ball_x, ball_y, ball_xspeed, ball_yspeed])
-    next_state = np.reshape(state, [1, state_size])
-    agent.remember(state, action, curr_reward, next_state, done)
-
-    if len(agent.memory) > batch_size:
-        agent.replay(batch_size)
-
-    # append the current reward value to the mean deque
-    mean.append(curr_reward)
-    epoch+=1     # reduce the game ticker down one

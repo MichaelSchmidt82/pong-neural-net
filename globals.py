@@ -3,7 +3,7 @@ game = {
 
     'WND_WIDTH': 500,
     'WND_HEIGHT': 500,
-    'SCOREBAR_HEIGHT': 30,
+    'SCOREBAR_H': 30,
 
     # colors
     'WHITE': (255, 255, 255),
